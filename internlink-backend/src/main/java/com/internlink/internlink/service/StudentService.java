@@ -24,11 +24,19 @@ public class StudentService {
     private final InternshipRepository internshipRepository;
     private final ApplicationRepository applicationRepository;
 
+    private Student getOrCreateStudent(User user) {
+        return studentRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    Student student = new Student();
+                    student.setUser(user);
+                    return studentRepository.save(student);
+                });
+    }
+
     public Student getProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return studentRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        return getOrCreateStudent(user);
     }
 
     public Student updateProfile(String email, StudentProfileDTO dto) {
@@ -37,8 +45,7 @@ public class StudentService {
         user.setName(dto.getName());
         userRepository.save(user);
 
-        Student student = studentRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = getOrCreateStudent(user);
         student.setPhone(dto.getPhone());
         student.setUniversity(dto.getUniversity());
         student.setDegree(dto.getDegree());
@@ -69,8 +76,7 @@ public class StudentService {
     public Application applyForInternship(String email, Long internshipId) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Student student = studentRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = getOrCreateStudent(user);
 
         if (applicationRepository.existsByStudentIdAndInternshipId(student.getId(), internshipId)) {
             throw new RuntimeException("Already applied for this internship");
@@ -90,16 +96,14 @@ public class StudentService {
     public List<Application> getMyApplications(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Student student = studentRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = getOrCreateStudent(user);
         return applicationRepository.findByStudentId(student.getId());
     }
 
     public Student updateResumeUrl(String email, String resumeUrl) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Student student = studentRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Student not found"));
+        Student student = getOrCreateStudent(user);
         student.setResumeUrl(resumeUrl);
         return studentRepository.save(student);
     }
