@@ -1,15 +1,14 @@
 package com.internlink.internlink.service;
 
-
 import com.internlink.internlink.dto.AuthResponse;
 import com.internlink.internlink.dto.LoginRequest;
 import com.internlink.internlink.dto.RegisterRequest;
 import com.internlink.internlink.entity.Company;
 import com.internlink.internlink.entity.Student;
 import com.internlink.internlink.entity.User;
-import com.internlink.internlink.repository.UserRepository;
 import com.internlink.internlink.repository.CompanyRepository;
 import com.internlink.internlink.repository.StudentRepository;
+import com.internlink.internlink.repository.UserRepository;
 import com.internlink.internlink.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +23,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final StudentRepository studentRepository;
     private final CompanyRepository companyRepository;
+    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -44,6 +44,9 @@ public class AuthService {
             student.setUniversity(request.getUniversity());
             student.setDegree(request.getDegree());
             studentRepository.save(student);
+
+            // Send student welcome email
+            emailService.sendStudentWelcome(savedUser.getEmail(), savedUser.getName());
         }
 
         if (savedUser.getRole() == User.Role.COMPANY) {
@@ -53,6 +56,9 @@ public class AuthService {
             company.setIndustry(request.getIndustry());
             company.setWebsite(request.getWebsite());
             companyRepository.save(company);
+
+            // Send company welcome email
+            emailService.sendCompanyWelcome(savedUser.getEmail(), request.getCompanyName());
         }
 
         String token = jwtUtil.generateToken(savedUser.getEmail(), savedUser.getRole().name());

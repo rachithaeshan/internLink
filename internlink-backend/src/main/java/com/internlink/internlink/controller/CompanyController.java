@@ -55,7 +55,6 @@ public class CompanyController {
                                                         @PathVariable Long id) {
         return ResponseEntity.ok(companyService.getApplicants(auth.getName(), id));
     }
-
     @PutMapping("/applications/{id}/status")
     public ResponseEntity<Application> updateStatus(Authentication auth,
                                                     @PathVariable Long id,

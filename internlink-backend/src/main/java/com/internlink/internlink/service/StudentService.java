@@ -23,6 +23,7 @@ public class StudentService {
     private final UserRepository userRepository;
     private final InternshipRepository internshipRepository;
     private final ApplicationRepository applicationRepository;
+    private final EmailService emailService;
 
     private Student getOrCreateStudent(User user) {
         return studentRepository.findByUserId(user.getId())
@@ -76,7 +77,8 @@ public class StudentService {
     public Application applyForInternship(String email, Long internshipId) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        Student student = getOrCreateStudent(user);
+        Student student = studentRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
         if (applicationRepository.existsByStudentIdAndInternshipId(student.getId(), internshipId)) {
             throw new RuntimeException("Already applied for this internship");
@@ -90,7 +92,25 @@ public class StudentService {
         application.setInternship(internship);
         application.setAppliedDate(LocalDate.now());
         application.setStatus(Application.Status.PENDING);
-        return applicationRepository.save(application);
+        Application saved = applicationRepository.save(application);
+
+        // Email to student — application confirmation
+        emailService.sendApplicationConfirmation(
+                user.getEmail(),
+                user.getName(),
+                internship.getTitle(),
+                internship.getCompany().getCompanyName()
+        );
+
+        // Email to company — new application alert
+        emailService.sendNewApplicationAlert(
+                internship.getCompany().getUser().getEmail(),
+                internship.getCompany().getCompanyName(),
+                user.getName(),
+                internship.getTitle()
+        );
+
+        return saved;
     }
 
     public List<Application> getMyApplications(String email) {

@@ -21,6 +21,7 @@ public class CompanyService {
     private final UserRepository userRepository;
     private final InternshipRepository internshipRepository;
     private final ApplicationRepository applicationRepository;
+    private final EmailService emailService;
 
     private Company getCompanyByEmail(String email) {
         User user = userRepository.findByEmail(email)
@@ -78,11 +79,28 @@ public class CompanyService {
         }
         return applicationRepository.findByInternshipId(internshipId);
     }
-
     public Application updateApplicationStatus(String email, Long applicationId, String status) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
-        application.setStatus(Application.Status.valueOf(status.toUpperCase()));
-        return applicationRepository.save(application);
+
+        Application.Status newStatus = Application.Status.valueOf(status.toUpperCase());
+        application.setStatus(newStatus);
+        Application saved = applicationRepository.save(application);
+
+        // Get student info for email
+        String studentEmail = application.getStudent().getUser().getEmail();
+        String studentName = application.getStudent().getUser().getName();
+        String internshipTitle = application.getInternship().getTitle();
+        String companyName = application.getInternship().getCompany().getCompanyName();
+
+        // Send email based on status
+        switch (newStatus) {
+            case SHORTLISTED -> emailService.sendShortlisted(studentEmail, studentName, internshipTitle, companyName);
+            case ACCEPTED    -> emailService.sendAccepted(studentEmail, studentName, internshipTitle, companyName);
+            case REJECTED    -> emailService.sendRejected(studentEmail, studentName, internshipTitle, companyName);
+            default -> {}
+        }
+
+        return saved;
     }
 }
